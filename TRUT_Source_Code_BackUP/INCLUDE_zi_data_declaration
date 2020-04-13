@@ -1,0 +1,95 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZI_DATA_DECLARATION
+*&---------------------------------------------------------------------*
+*************************************Data Declaration*****************************************
+
+TABLES: e070,e07T, V_USR_NAME            .
+TYPE-POOLS: icon                    .
+
+*Structure for parent TR's
+TYPES: BEGIN OF gty_parenttr        ,
+         trstatus TYPE dd07t-ddtext,              "status
+         as4user  TYPE tr_as4user,                "Owner ID
+         trkorr   TYPE trkorr,                    "Task
+       END   OF gty_parenttr        .
+
+*Structure for child TR's
+TYPES: BEGIN OF gty_childtr         ,
+         trstatus TYPE dd07t-ddtext,              "status
+         as4user  TYPE tr_as4user,                "Owner
+         trkorr   TYPE trkorr,                    "Task
+         strkorr  TYPE strkorr,                   "high level request
+       END   OF gty_childtr         .
+
+* structure for Final display table
+TYPES: BEGIN OF gty_display       ,
+         checkbox    TYPE flag,                   "Checkbox
+         serialno(4) TYPE c,                      "Serial number
+         parenttr    TYPE strkorr,                "Parent TR
+         childtr     TYPE strkorr,                "Child TR
+         owner       TYPE tr_as4user,             "Owner ID
+         oname       TYPE v_usr_name-name_text,   "Owner Name
+         status      TYPE dd07t-ddtext,           " Status
+         t_color     TYPE lvc_t_scol,             " Row Color
+         sd          TYPE AS4TEXT,                " Short discription
+         msg(255)    TYPE c,                      " Comments
+       END OF gty_display                  .
+* Structure to store system return messages
+TYPES: BEGIN OF gty_log     ,
+         id  TYPE sy-msgid,                       "Owner ID
+         msg TYPE string,                         "Comments
+       END OF gty_log       .
+
+* structure to filter duplicate values childtr internal table
+TYPES: BEGIN OF gty_parenttr2,
+         strkorr TYPE strkorr,                    "Parent TR
+       END OF gty_parenttr2.
+
+* structure to store the value of owner name
+TYPES: BEGIN OF gty_owner,
+        BNAME TYPE BNAME,                         "ID
+        Name  TYPE NAME_TEXT,                     "Complete name
+      END OF gty_owner.
+
+*Internal table declaration
+DATA:  gt_parenttr  TYPE TABLE OF gty_parenttr,
+       gt_childtr   TYPE TABLE OF gty_childtr,
+       gt_display   TYPE STANDARD TABLE OF gty_display,
+       gt_log       TYPE STANDARD TABLE OF gty_log,
+       gt_dd07t     TYPE STANDARD TABLE OF dd07t,
+       gt_parenttr2 TYPE STANDARD TABLE OF gty_parenttr2,
+       gt_owner     TYPE STANDARD TABLE OF gty_owner,
+       gt_sd        TYPE STANDARD TABLE OF e07t,
+       gwa_sd       LIKE LINE OF gt_sd,
+       gwa_owner    LIKE LINE OF  gt_owner,
+       gwa_parenttr2 LIKE LINE OF gt_parenttr2,
+       gwa_parenttr LIKE LINE OF gt_parenttr          ,
+       gwa_childtr  LIKE LINE OF gt_childtr,
+       gwa_dd07t    LIKE LINE OF gt_dd07t,
+       gwa_log      LIKE LINE OF gt_log,
+       gwa_1display LIKE LINE OF gt_display,
+       gwa_2display LIKE LINE OF gt_display,
+       gwa_3display LIKE LINE OF gt_display,
+       gwa_display  LIKE LINE OF gt_display.
+
+* ALV References
+DATA : lt_table         TYPE REF TO cl_salv_table,
+       lt_functions     TYPE REF TO cl_salv_functions_list,
+       c_alv            TYPE REF TO cl_gui_alv_grid,
+       custom_container TYPE REF TO cl_gui_custom_container,
+       lt_display       TYPE REF TO cl_salv_display_settings,
+       lt_columns       TYPE REF TO cl_salv_columns_table,
+       lo_header        TYPE REF TO cl_salv_form_layout_grid,
+       lo_h_label       TYPE REF TO cl_salv_form_label,
+       lo_h_flow        TYPE REF TO cl_salv_form_layout_flow,
+       lv_row           TYPE i VALUE 1,
+       lo_column        TYPE REF TO cl_salv_column_list,
+       lo_cols          TYPE REF TO cl_salv_columns,
+       lt_sort          TYPE REF TO cl_salv_sorts,
+       lt_column        TYPE REF TO cl_salv_column_table.
+
+
+DATA: count     TYPE i,
+      zmsg(255) TYPE c.
+
+***********************************END OF DATA DECLARATION**************************************

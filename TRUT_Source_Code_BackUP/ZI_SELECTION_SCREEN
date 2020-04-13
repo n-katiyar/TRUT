@@ -1,0 +1,35 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZI_SELECTION_SCREEN
+*&---------------------------------------------------------------------*
+
+
+***********************************   SELECTION-SCREENS   **************************************
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001         . "frame to select filter option
+
+SELECTION-SCREEN BEGIN OF LINE                                       .
+PARAMETER  rb_b1 RADIOBUTTON GROUP rad1 USER-COMMAND com DEFAULT 'X' . "Selection based on user id
+SELECTION-SCREEN COMMENT 5(50) text-002 FOR FIELD rb_b1              .
+SELECTION-SCREEN END OF LINE                                         .
+
+SELECTION-SCREEN BEGIN OF LINE                                       .
+PARAMETER  rb_b2 RADIOBUTTON GROUP rad1                              . "Selection based on user id
+SELECTION-SCREEN COMMENT 5(50) text-003 FOR FIELD rb_b2              .
+SELECTION-SCREEN END OF LINE                                         .
+
+SELECTION-SCREEN BEGIN OF LINE                                       .
+PARAMETER  rb_b3 RADIOBUTTON GROUP rad1                              . "Selection based on TR
+SELECTION-SCREEN COMMENT 5(50) text-004 FOR FIELD rb_b3              .
+SELECTION-SCREEN END OF LINE                                         .
+
+SELECTION-SCREEN END OF BLOCK b1                                     .
+
+
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE text-005         . "Frame to enter values
+
+SELECT-OPTIONS: s_uid FOR e070-as4user NO INTERVALS MODIF ID m1 DEFAULT sy-uname OBLIGATORY,     "User ID
+                s_tr  FOR e070-strkorr NO INTERVALS  MODIF ID m2     .                 "TR list
+
+SELECTION-SCREEN END OF BLOCK b2                                     .
+
+*********************************** END OF SELECTION-SCREENS **************************************

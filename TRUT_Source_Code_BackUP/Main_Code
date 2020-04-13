@@ -1,0 +1,84 @@
+************************************************************************
+*                    A D M I N I S T R A T I O N                       *
+************************************************************************
+*  Program ID        :                                                 *
+*  Version           :                                                 *
+*  SAP Version       :                                                 *
+*  Program Name      :    Z_TR_UTILITY                                 *
+*  Created by        :                                                 *
+*  Created on        :    06.06.2015                                   *
+*  Description       :    Tr Utility Tool                              *
+*                                                                      *
+************************************************************************
+*                    C H A N G E  H I S T O R Y                        *
+************************************************************************
+* Change Id   :                                                        *
+* Author      :                                                        *
+* Changed On  :                                                        *
+* Request No  :                                                        *
+* Description :                                                        *
+************************************************************************
+
+REPORT Z_tr_utility_tool        .
+
+  INCLUDE zi_data_declaration     .  "Data declaration
+
+  INCLUDE zi_selection_screen     .  "code for selection screen
+
+  INCLUDE zi_class_definition     .  "class definition for handler
+
+  AT SELECTION-SCREEN.
+    INCLUDE zi_validation1         .  "Selection screen input validation
+
+  AT SELECTION-SCREEN OUTPUT      .  "Action based on the radio button selection
+    IF rb_b1 = 'X'                .
+      PERFORM f_hide_trfield      .  "Hide TR field
+    ENDIF                         .
+
+    IF rb_b2 = 'X'                .
+      PERFORM f_hide_trfield      .  "Hide TR field
+    ENDIF                         .
+
+    IF rb_b3 = 'X'                .
+      PERFORM f_hide_uidfield     .  "Hide User Id Field
+    ENDIF                         .
+
+  INCLUDE zi_class_implementation .  "class implementation for handler
+
+  START-OF-SELECTION.
+***********************************      GET DATA   1      **************************************
+  IF rb_b1 = 'X'                        .
+
+    PERFORM f_get_data1                 .   "get data from base table
+    PERFORM f_get_status                .   "Get the status of the TR
+    PERFORM f_transfer_to_display       .   "Transfer final display data to display table
+
+  ENDIF                                 .
+***********************************     END GET DATA  1    **************************************
+
+***********************************      GET DATA   2      **************************************
+  IF rb_b2 = 'X'                        .
+
+    PERFORM f_get_data2                 .
+    PERFORM f_get_status                .
+    PERFORM f_transfer_to_display       .
+
+  ENDIF                                 .
+
+***********************************     END GET DATA  2    **************************************
+
+***********************************      GET DATA   3      **************************************
+  IF rb_b3 = 'X'                        .
+
+    PERFORM f_get_data3                 .
+    PERFORM f_transfer_to_display       .
+    PERFORM f_get_status                .
+
+  ENDIF                                 .
+
+END-OF-SELECTION.
+
+***********************************     END GET DATA  3    **************************************
+
+  INCLUDE zi_set_alv_functionality.       " Field catelog and color coding for display
+  INCLUDE zi_tr_subroutines.              " Subroutines..

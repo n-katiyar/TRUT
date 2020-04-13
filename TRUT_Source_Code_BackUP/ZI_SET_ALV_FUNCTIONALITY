@@ -1,0 +1,35 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZI_SET_ALV_FUNCTIONALITY
+*&---------------------------------------------------------------------*
+**********************************ALV DISPLAY FUNCTIONALITY*******************************************
+
+* Setting the header text
+PERFORM f_set_headertext         .
+
+* Set screen status
+PERFORM f_set_screen_status      .
+
+* Set colors row-wise
+PERFORM f_set_color              .
+
+* Set Title in TOP of Page
+*PERFORM f_set_title              .
+
+* SET CHECK HOTSPOT
+PERFORM f_set_checkhotspot       .
+
+* Set fielt catalouge
+PERFORM f_set_fielcat            .
+
+* Set event handler
+PERFORM f_event_handling         .
+
+* Call display method
+IF gt_display[] IS NOT INITIAL  .
+  lt_table->display( )          .
+ELSE                            .
+  MESSAGE text-333 TYPE 'I'     .
+  LEAVE LIST-PROCESSING         .
+ENDIF                           .
+
+*************************************End Of ALV display functionality*******************

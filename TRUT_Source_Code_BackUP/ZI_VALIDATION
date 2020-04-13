@@ -1,0 +1,6 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZI_VALIDATION
+*&---------------------------------------------------------------------*
+
+PERFORM f_uid_validation .    "Validation On user Id Field
+PERFORM f_tr_validation  .    "Validation On TR Field

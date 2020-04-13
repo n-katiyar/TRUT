@@ -1,0 +1,26 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZI_CLASS_DEFINITION
+*&---------------------------------------------------------------------*
+
+
+*----------------------------------------------------------------------*
+*       CLASS lcl_event_handler definition
+*----------------------------------------------------------------------*
+
+* handler definition for checkbox
+CLASS lcl_event_handler DEFINITION                              .
+
+  PUBLIC SECTION                                                .
+    METHODS:
+      on_link_click FOR EVENT link_click OF cl_salv_events_table
+        IMPORTING row column                                    .
+
+ENDCLASS                                                        .             "lcl_event_handler DEFINITION
+
+* handler definition for buttons
+CLASS lcl_event_handler1 DEFINITION                             .
+  PUBLIC SECTION                                                .
+    METHODS:
+      on_user_command FOR EVENT added_function OF cl_salv_events
+        IMPORTING e_salv_function                               .
+ENDCLASS.

@@ -1,0 +1,918 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZI_TR_SUBROUTINES
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*&      Form  f_HIDE_TRFIELD                                             *
+*&---------------------------------------------------------------------*
+************************************************************************
+*  SUBROUTINE TO HIDE THE TR LIST SELECTION OPTION FROM THE            *
+*  SCREEN BASED ON THE SELECTION OF RADIO BUTTON.                      *
+************************************************************************
+FORM f_hide_trfield        .
+  LOOP AT SCREEN           .
+    IF screen-group1 = 'M2'.
+      screen-active = 0    .
+    ENDIF                  .
+    MODIFY SCREEN          .
+  ENDLOOP                  .
+ENDFORM                    .                    " HIDE_TRFIELD
+
+
+*&---------------------------------------------------------------------*
+*&      Form  f_HIDE_UIDFIELD                                            *
+*&---------------------------------------------------------------------*
+************************************************************************
+*  SUBROUTINE TO HIDE THE USER ID SELECT OPTION FROM THE               *
+*  SCREEN BASED ON THE SELECTION OF RADIO BUTTON.                      *
+************************************************************************
+
+FORM f_hide_uidfield       .
+  LOOP AT SCREEN           .
+    IF screen-group1 = 'M1'.
+      screen-active = 0    .
+    ENDIF                  .
+    MODIFY SCREEN          .
+  ENDLOOP                  .
+ENDFORM                    .                    " HIDE_UIDFIELD
+
+*&---------------------------------------------------------------------*
+*&      Form    f_GET_DATA1
+*&---------------------------------------------------------------------*
+************************************************************************
+*  Getting data in to table gt_parenttr and gt_childtr                 *
+*   from standard table e070                                           *
+************************************************************************
+
+FORM f_get_data1 .
+
+  SELECT  trstatus
+              as4user
+              trkorr
+        FROM  e070
+        INTO  TABLE gt_parenttr
+        WHERE as4user IN s_uid
+        AND   strkorr EQ ' '               .
+  IF sy-subrc <> 0.
+*      MESSAGE text-007 TYPE 'I'.
+  ELSEIF gt_parenttr IS NOT INITIAL.
+    SELECT  trstatus
+            as4user
+            trkorr
+            strkorr
+       FROM e070
+       INTO TABLE          gt_childtr
+       FOR  ALL ENTRIES IN gt_parenttr
+       WHERE strkorr EQ gt_parenttr-trkorr.
+    IF sy-subrc <> 0.
+      "do command here
+    ENDIF.
+  ENDIF                                   .
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  f_GET_DATA2
+*&---------------------------------------------------------------------*
+************************************************************************
+*  Getting data in to table gt_parenttr and gt_childtr                 *
+*   from standard table e070                                           *
+************************************************************************
+FORM f_get_data2 .
+
+  SELECT trstatus
+         as4user
+         trkorr
+         strkorr
+   FROM  e070
+   INTO  TABLE gt_childtr
+   WHERE as4user IN s_uid
+   AND   strkorr NE ' '               .
+
+  IF gt_childtr IS NOT INITIAL.
+    MOVE-CORRESPONDING gt_childtr TO gt_parenttr2.
+    DELETE ADJACENT DUPLICATES FROM gt_parenttr2 COMPARING strkorr.
+    CLEAR gt_childtr.
+
+    IF gt_parenttr2 IS NOT INITIAL.
+      SELECT  trstatus
+              as4user
+              trkorr
+              strkorr
+         FROM e070
+         INTO TABLE          gt_childtr
+         FOR  ALL ENTRIES IN gt_parenttr2
+         WHERE strkorr EQ gt_parenttr2-strkorr.
+    ENDIF.
+
+    SELECT  trstatus
+            as4user
+            trkorr
+      FROM  e070
+      INTO  TABLE gt_parenttr
+      FOR ALL ENTRIES IN gt_parenttr2
+      WHERE trkorr = gt_parenttr2-strkorr.
+  ENDIF.
+
+*   LOOP AT gt_childtr INTO gwa_childtr.
+**     READ TABLE gt_parenttr2 INTO gwa_parenttr2 WITH KEY ptr.
+*     APPEND gwa_childtr-strkorr TO gt_parenttr2.
+*
+*   ENDLOOP.
+
+
+*  IF sy-subrc EQ 0
+*    AND gt_childtr IS NOT INITIAL      .
+*    SELECT DISTINCT trstatus
+*           as4user
+*           strkorr
+*      FROM e070
+*      INTO TABLE          gt_parenttr
+*      FOR  ALL ENTRIES IN gt_childtr
+*      WHERE strkorr EQ gt_childtr-strkorr.
+*  ENDIF  .
+*  DELETE ADJACENT DUPLICATES FROM gt_parenttr COMPARING ALL FIELDS.
+
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  f_GET_DATA3
+*&---------------------------------------------------------------------*
+************************************************************************
+*  Getting data in to table gt_parenttr and gt_childtr                 *
+*   from standard table e070                                           *
+************************************************************************
+FORM f_get_data3 .
+
+  IF s_tr IS NOT INITIAL.
+    SELECT  trstatus
+             as4user
+             trkorr
+       FROM  e070
+       INTO  TABLE gt_parenttr
+       WHERE strkorr EQ ' '
+       AND   trkorr IN s_tr  .
+
+    IF gt_parenttr IS NOT INITIAL.
+      SELECT trstatus
+             as4user
+             trkorr
+             strkorr
+       FROM  e070
+       INTO  TABLE gt_childtr
+       FOR ALL ENTRIES IN gt_parenttr
+       WHERE strkorr EQ gt_parenttr-trkorr.
+    ENDIF.
+  ENDIF.
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_TRANSFER_TO_DISPLAY
+*&---------------------------------------------------------------------*
+************************************************************************
+*  fetching data from gt_parenttr and gt_childtr in to                 *
+*   gt_display table for final output display                          *
+************************************************************************
+
+FORM f_transfer_to_display .
+  SORT gt_parenttr BY trkorr.
+  count = 1.
+  LOOP AT gt_parenttr INTO gwa_parenttr          .
+    gwa_display-parenttr = gwa_parenttr-trkorr   .
+    gwa_display-owner    = gwa_parenttr-as4user  .
+    READ TABLE gt_dd07t INTO gwa_dd07t
+    WITH KEY domvalue_l = gwa_parenttr-trstatus
+    BINARY SEARCH.
+    IF sy-subrc = 0.
+      gwa_display-status = gwa_dd07t-ddtext.
+    ENDIF.
+
+    gwa_display-serialno = count                 .
+    APPEND gwa_display TO gt_display             .
+    count = count + 1                            .
+    CLEAR gwa_display-serialno.
+    LOOP AT gt_childtr INTO gwa_childtr
+      WHERE strkorr = gwa_parenttr-trkorr        .
+      gwa_display-childtr = gwa_childtr-trkorr   .
+      gwa_display-owner   = gwa_childtr-as4user  .
+      CLEAR gwa_dd07t.
+      READ TABLE gt_dd07t INTO gwa_dd07t
+      WITH KEY domvalue_l = gwa_childtr-trstatus
+      BINARY SEARCH.
+      IF sy-subrc = 0.
+        gwa_display-status = gwa_dd07t-ddtext.
+      ENDIF.
+      APPEND gwa_display TO gt_display           .
+    ENDLOOP                                      .
+    CLEAR: gwa_childtr, gwa_parenttr, gwa_display.
+  ENDLOOP                                        .
+
+
+
+  LOOP AT gt_display INTO gwa_display.
+    PERFORM f_getowner.
+    READ TABLE gt_owner INTO gwa_owner WITH KEY bname = gwa_display-owner.
+    gwa_display-oname = gwa_owner-name.
+    CLEAR gwa_owner-name.
+    MODIFY gt_display FROM gwa_display.
+  ENDLOOP.
+  CLEAR: gwa_display, gwa_owner.
+
+* Short Discription to display table
+  LOOP AT gt_display INTO gwa_display.
+   IF gwa_display-childtr eq ' '.
+    READ TABLE gt_sd INTO gwa_sd
+    WITH KEY trkorr = gwa_display-parenttr.
+*    BINARY SEARCH.
+*    IF sy-subrc = 0.
+      gwa_display-sd = gwa_sd-as4text.
+*    ENDIF.
+   MODIFY gt_display FROM gwa_display.
+  ENDIF.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_GET_STATUS
+*&---------------------------------------------------------------------*
+************************************************************************
+*   Fetching short discription of TR status from table dd07t           *
+************************************************************************
+FORM f_get_status .
+  SELECT * FROM dd07t INTO TABLE gt_dd07t
+   WHERE domname = 'TRSTATUS'
+   AND   ddlanguage = 'EN'.
+
+  IF sy-subrc = 0.
+    SORT gt_dd07t BY domvalue_l.    " sorting table based on domain value
+  ENDIF.
+
+IF gt_parenttr IS NOT INITIAL.
+  SELECT * FROM
+     E07T INTO TABLE gt_sd
+    FOR ALL ENTRIES IN gt_parenttr
+    WHERE trkorr eq gt_parenttr-trkorr
+    AND LANGU eq 'EN'.
+ENDIF.
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_release
+*&---------------------------------------------------------------------*
+************************************************************************
+*   Writing Functionality to release the TR                            *
+************************************************************************
+
+FORM f_release .
+  LOOP AT gt_display INTO gwa_display WHERE status <> 'Released' " Outer Loop to keep track of status only
+     AND checkbox = 'X' .
+    IF gwa_display-childtr EQ ' '.          "When it is a parent TR
+      PERFORM f_parent_release.             "Call Parent Release subroutine
+    ELSE.
+      PERFORM f_child_release.              "Else Call Child TR Release Subroutine
+    ENDIF.
+  ENDLOOP.
+*   delete gt_display WHERE msg = ''.
+  lt_table->refresh( ) .
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_change
+*&---------------------------------------------------------------------*
+FORM f_change .
+  LOOP AT gt_display INTO gwa_display WHERE checkbox = 'X'.
+    IF gwa_display-childtr IS INITIAL.
+      CALL FUNCTION 'TR_CHANGE_USERNAME'
+        EXPORTING
+*         WI_DIALOG           = 'X'
+          wi_trkorr           = gwa_display-parenttr
+          wi_user             = sy-uname
+        EXCEPTIONS
+          already_released    = 1
+          e070_update_error   = 2
+          file_access_error   = 3
+          not_exist_e070      = 4
+          user_does_not_exist = 5
+          tr_enqueue_failed   = 6
+          no_authorization    = 7
+          wrong_client        = 8
+          unallowed_user      = 9
+          OTHERS              = 10.
+      IF sy-subrc eq 0.
+         gwa_display-owner = 'changed'.
+         MODIFY gt_display FROM gwa_1display.
+      ENDIF.
+    ELSE.
+      CALL FUNCTION 'TR_CHANGE_USERNAME'
+        EXPORTING
+*         WI_DIALOG           = 'X'
+          wi_trkorr           = gwa_display-childtr
+          wi_user             = sy-uname
+        EXCEPTIONS
+          already_released    = 1
+          e070_update_error   = 2
+          file_access_error   = 3
+          not_exist_e070      = 4
+          user_does_not_exist = 5
+          tr_enqueue_failed   = 6
+          no_authorization    = 7
+          wrong_client        = 8
+          unallowed_user      = 9
+          OTHERS              = 10.
+      IF sy-subrc eq 0.
+         gwa_display-owner = 'changed'.
+         MODIFY gt_display FROM gwa_1display.
+      ENDIF.
+    ENDIF.
+    PERFORM f_fill_log.
+    CLEAR gwa_display.
+  ENDLOOP.
+  lt_table->refresh( ) .
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_SIMULATE
+*&---------------------------------------------------------------------*
+
+FORM f_simulate .
+  LOOP AT gt_display INTO gwa_display WHERE checkbox = 'X'.
+    IF gwa_display-childtr IS NOT INITIAL.
+      CALL FUNCTION 'TR_RELEASE_REQUEST'
+        EXPORTING
+          iv_trkorr                  = gwa_display-childtr
+          iv_dialog                  = ''
+          iv_as_background_job       = 'X'
+          iv_success_message         = 'X'
+          iv_display_export_log      = 'X'
+          iv_simulation              = 'X'
+        EXCEPTIONS
+          cts_initialization_failure = 1
+          enqueue_failed             = 2
+          no_authorization           = 3
+          invalid_request            = 4
+          request_already_released   = 5
+          repeat_too_early           = 6
+          error_in_export_methods    = 7
+          object_check_error         = 8
+          docu_missing               = 9
+          db_access_error            = 10
+          action_aborted_by_user     = 11
+          export_failed              = 12
+          OTHERS                     = 13.
+    ELSE.
+      CALL FUNCTION 'TR_RELEASE_REQUEST'
+        EXPORTING
+          iv_trkorr                  = gwa_display-parenttr
+          iv_dialog                  = ''
+          iv_as_background_job       = 'X'
+          iv_success_message         = 'X'
+          iv_display_export_log      = 'X'
+          iv_simulation              = 'X'
+        EXCEPTIONS
+          cts_initialization_failure = 1
+          enqueue_failed             = 2
+          no_authorization           = 3
+          invalid_request            = 4
+          request_already_released   = 5
+          repeat_too_early           = 6
+          error_in_export_methods    = 7
+          object_check_error         = 8
+          docu_missing               = 9
+          db_access_error            = 10
+          action_aborted_by_user     = 11
+          export_failed              = 12
+          OTHERS                     = 13.
+    ENDIF.
+    PERFORM f_fill_log.
+    CLEAR gwa_display.
+  ENDLOOP.
+  lt_table->refresh( ) .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ZI_SET_TITLE
+*&---------------------------------------------------------------------*
+
+*FORM f_set_title .
+*  lo_h_label = lo_header->create_label( row = 1 column = 1 ).
+*  lo_h_label->set_text( text-h01 ). " title
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_SET_CHECKHOTSPOT
+*&---------------------------------------------------------------------*
+
+FORM f_set_checkhotspot .
+  lo_cols = lt_table->get_columns( ).
+  TRY.
+      lo_column ?= lo_cols->get_column( 'CHECKBOX' ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>checkbox_hotspot ).
+      lo_column->set_output_length( 10 ).
+    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
+  ENDTRY.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_SET_FIELCAT
+*&---------------------------------------------------------------------*
+
+FORM f_set_fielcat .
+  TRY.
+**checkbox
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'CHECKBOX' ).
+      lt_column->set_short_text( 'Select' ).
+      lt_column->set_medium_text('Select' ).
+      lt_column->set_long_text( 'Select' ).
+      lt_columns->set_optimize( abap_true ).
+
+** Serial No
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'SERIALNO' ).
+      lt_column->set_short_text('Serial No' ).
+      lt_column->set_medium_text('Serial No' ).
+      lt_column->set_long_text( 'Serial No' ).
+      lt_sort = lt_table->get_sorts( ).
+      lt_columns->set_optimize( abap_true ).
+
+** Parent TR
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'PARENTTR' ).
+      lt_column->set_short_text('Parent TR' ).
+      lt_column->set_medium_text('Parent TR' ).
+      lt_column->set_long_text( 'Parent TR' ).
+      lt_sort = lt_table->get_sorts( ).
+      lt_sort->add_sort( 'PARENTTR' ).
+      lt_columns->set_optimize( abap_true ).
+
+** Short Discription
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'SD' ).
+      lt_column->set_short_text('Detail' ).
+      lt_column->set_medium_text('Discription' ).
+      lt_column->set_long_text( 'Discription' ).
+      lt_columns->set_optimize( abap_true ).
+
+** Child TR
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'CHILDTR' ).
+      lt_column->set_medium_text('Child TR ' ).
+      lt_column->set_long_text( 'Child TR' ).
+      lt_columns->set_optimize( abap_true ).
+** status
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'STATUS' ).
+      lt_column->set_short_text( 'Status' ).
+      lt_column->set_medium_text('Status' ).
+      lt_column->set_long_text( 'Status' ).
+      lt_columns->set_optimize( abap_true ).
+**Owner Column
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'OWNER' ).
+      lt_column->set_short_text( 'Owner ID' ).
+      lt_column->set_medium_text('Owner ID' ).
+      lt_column->set_long_text( 'Owner ID' ).
+      lt_columns->set_optimize( abap_true ).
+**Owner Name
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'ONAME' ).
+      lt_column->set_short_text( 'Owner Name' ).
+      lt_column->set_medium_text('Owner Name' ).
+      lt_column->set_long_text( 'Owner Name' ).
+      lt_columns->set_optimize( abap_true ).
+
+** Comments after clicking on any button
+      lt_columns = lt_table->get_columns( ).
+      lt_column ?= lt_columns->get_column( 'MSG' ).
+      lt_column->set_short_text('Comments' ).
+      lt_column->set_medium_text('Comments' ).
+      lt_column->set_long_text( 'Comments' ).
+      lt_columns->set_optimize( abap_true ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_EVENT_HANDLING
+*&---------------------------------------------------------------------*
+
+FORM f_event_handling .
+**   Get the event object
+  DATA: lo_events TYPE REF TO cl_salv_events_table.
+  lo_events = lt_table->get_event( ).
+
+**   Instantiate the event handler object
+  DATA: lo_event_handler TYPE REF TO lcl_event_handler.
+  CREATE OBJECT lo_event_handler.
+**   event handler
+  SET HANDLER lo_event_handler->on_link_click FOR lo_events.
+
+  DATA: lo_event_handler1 TYPE REF TO lcl_event_handler1.
+  CREATE OBJECT lo_event_handler1.
+  SET HANDLER lo_event_handler1->on_user_command FOR lo_events.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_SET_COLOR
+*&---------------------------------------------------------------------*
+
+FORM f_set_color .
+
+  DATA: lt_s_color TYPE lvc_t_scol,
+        ls_s_color TYPE lvc_s_scol,
+        la_vbak    LIKE LINE OF gt_display,
+        l_count    TYPE i.
+
+  DATA: lo_cols_tab TYPE REF TO cl_salv_columns_table,
+        lo_col_tab  TYPE REF TO cl_salv_column_table,
+        flag        TYPE        i,
+        ls_color    TYPE        lvc_s_colo.
+
+
+
+  lo_cols_tab = lt_table->get_columns( )      .
+  INCLUDE <color>                             .
+  flag = 1.
+*  l_count = 5.
+  LOOP AT gt_display INTO gwa_display         .
+    ON CHANGE OF gwa_display-parenttr.
+      IF flag EQ 1.
+        flag = 0.
+      ELSE.
+        flag = 1.
+      ENDIF.
+      IF l_count EQ 2.
+        l_count = 0.
+      ENDIF.
+
+      l_count = l_count + 1               .
+    ENDON.
+    IF flag EQ 1                           .
+*     write code here
+      ls_s_color-color-col = l_count.
+      ls_s_color-color-int = 1.
+      ls_s_color-color-inv = 0.
+      APPEND ls_s_color TO lt_s_color.
+      CLEAR  ls_s_color.
+    ELSEIF flag EQ 0.
+      ls_s_color-color-col = l_count.
+      ls_s_color-color-int = 1.
+      ls_s_color-color-inv = 0.
+      APPEND ls_s_color TO lt_s_color.
+      CLEAR  ls_s_color.
+    ENDIF.
+    gwa_display-t_color = lt_s_color.
+    MODIFY gt_display FROM gwa_display.
+    CLEAR  gwa_display.
+    CLEAR  lt_s_color.
+  ENDLOOP.
+
+  TRY.
+      lo_cols_tab->set_color_column( 'T_COLOR' ).
+    CATCH cx_salv_data_error.                           "#EC NO_HANDLER
+  ENDTRY.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_SET_HEADERTEXT
+*&---------------------------------------------------------------------*
+FORM f_set_headertext .
+  CREATE OBJECT lo_header .
+  TRY                                         .
+      cl_salv_table=>factory(
+      EXPORTING
+        list_display = abap_false
+      IMPORTING r_salv_table = lt_table
+      CHANGING t_table = gt_display )         .
+    CATCH cx_salv_msg                         .
+  ENDTRY                                      .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_SET_SCREEN_STATUS
+*&---------------------------------------------------------------------*
+FORM f_set_screen_status .
+  lt_table->set_screen_status(
+     pfstatus      =  'SALV_STANDARD'
+     report        =  sy-repid
+     set_functions = lt_table->c_functions_all ).
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_TR_VALIDATION
+*&---------------------------------------------------------------------*
+*  SUBROUTINE TO PERFORM VALIDATION ON TR LIST                         *
+************************************************************************
+FORM f_tr_validation             .
+
+  DATA : tr  TYPE e070-trkorr,
+         str TYPE e070-strkorr.
+  LOOP AT s_tr                    .
+    IF s_tr-low IS NOT INITIAL    .
+      SELECT SINGLE trkorr
+        FROM e070
+        INTO tr
+        WHERE trkorr = s_tr-low
+        AND strkorr = ' '         .
+      IF sy-subrc NE 0            .
+        MESSAGE text-444 TYPE 'E' .
+      ENDIF                       .
+    ENDIF                         .
+  ENDLOOP                         .
+
+ENDFORM                           .
+
+*&---------------------------------------------------------------------*
+*&      Form  ZI_UID_VALIDATION
+*&---------------------------------------------------------------------*
+*  SUBROUTINE TO PERFORM VALIDATION ON USERID LIST                     *
+************************************************************************
+FORM f_uid_validation                  .
+  DATA : user TYPE usr21-bname          .
+
+  LOOP AT s_uid                         .
+    IF s_uid IS NOT INITIAL             .
+      SELECT SINGLE bname
+        FROM usr21
+        INTO user
+        WHERE bname = s_uid-low         .
+    ENDIF                               .
+    IF user IS INITIAL AND sy-subrc NE 0.
+      MESSAGE text-444 TYPE 'E'         .
+    ENDIF                               .
+  ENDLOOP                               .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ZI_SPTR
+*&---------------------------------------------------------------------*
+
+FORM f_sptr .
+
+  LOOP AT gt_display INTO gwa_display.
+    gwa_display-checkbox = 'X' .
+    MODIFY gt_display FROM gwa_display INDEX sy-tabix.
+  ENDLOOP.
+  lt_table->refresh( ) .
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_CPTR
+*&---------------------------------------------------------------------*
+FORM f_cptr .
+  LOOP AT gt_display INTO gwa_display.
+    IF gwa_display-childtr NE ' '.
+      gwa_display-checkbox = 'X' .
+    ELSEIF gwa_display-parenttr NE ' ' AND gwa_display-checkbox = 'X'.
+      gwa_display-checkbox = ' ' .
+    ENDIF.
+    MODIFY gt_display FROM gwa_display INDEX sy-tabix.
+  ENDLOOP.
+  lt_table->refresh( ) .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  f_UNCHECK
+*&---------------------------------------------------------------------*
+FORM f_uncheck .
+  LOOP AT gt_display INTO gwa_display.
+    IF gwa_display-checkbox EQ 'X'.
+      gwa_display-checkbox = ' '.
+      MODIFY gt_display FROM gwa_display INDEX sy-tabix.
+    ENDIF.
+  ENDLOOP.
+  lt_table->refresh( ) .
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_parent_release
+*&---------------------------------------------------------------------*
+FORM f_parent_release .
+
+  LOOP AT gt_display INTO gwa_1display WHERE parenttr = gwa_display-parenttr.  "Loop to go through each child TR
+    IF gwa_1display-status <> 'Released' AND gwa_1display-childtr <> ' '.      "If it is child TR and Not Released
+      CALL FUNCTION 'TR_RELEASE_REQUEST'
+        EXPORTING
+          iv_trkorr                  = gwa_1display-childtr                    "Child TR which need to release
+          iv_dialog                  = ' '
+          iv_as_background_job       = ' '
+          iv_success_message         = 'X'
+          iv_display_export_log      = 'X'
+          iv_simulation              = ' '
+        EXCEPTIONS
+          cts_initialization_failure = 1
+          enqueue_failed             = 2
+          no_authorization           = 3
+          invalid_request            = 4
+          request_already_released   = 5
+          repeat_too_early           = 6
+          error_in_export_methods    = 7
+          object_check_error         = 8
+          docu_missing               = 9
+          db_access_error            = 10
+          action_aborted_by_user     = 11
+          export_failed              = 12
+          OTHERS                     = 13.
+      IF sy-subrc eq 0.
+         gwa_1display-status = 'Released'.
+         MODIFY gt_display FROM gwa_1display.
+      ENDIF.
+
+      PERFORM f_fill_log.                                                 "Get the system return Message
+    ENDIF.
+    CLEAR gwa_1display.
+  ENDLOOP.
+
+  IF sy-subrc EQ 0.
+    CALL FUNCTION 'TR_RELEASE_REQUEST'
+      EXPORTING
+        iv_trkorr                  = gwa_display-parenttr                     "parenttr Of above child TR's
+        iv_dialog                  = ' '
+        iv_as_background_job       = ' '
+        iv_success_message         = 'X'
+        iv_display_export_log      = 'X'
+        iv_simulation              = ' '      " Do not check
+      EXCEPTIONS
+        cts_initialization_failure = 1
+        enqueue_failed             = 2
+        no_authorization           = 3
+        invalid_request            = 4
+        request_already_released   = 5
+        repeat_too_early           = 6
+        error_in_export_methods    = 7
+        object_check_error         = 8
+        docu_missing               = 9
+        db_access_error            = 10
+        action_aborted_by_user     = 11
+        export_failed              = 12
+        OTHERS                     = 13.
+     IF sy-subrc eq 0.
+         gwa_display-status = 'Released'.
+         MODIFY gt_display FROM gwa_display.
+      ENDIF.
+
+    PERFORM f_fill_log.                       "Get the system return Message
+    clear gwa_display.                        "clear outer loop workarea.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_CHILD_RELEASE
+*&---------------------------------------------------------------------*
+FORM f_child_release .
+  CALL FUNCTION 'TR_RELEASE_REQUEST'
+    EXPORTING
+      iv_trkorr                  = gwa_display-childtr
+      iv_dialog                  = ' '
+      iv_as_background_job       = ' '
+      iv_success_message         = 'X'
+      iv_display_export_log      = 'X'
+      iv_simulation              = ' '
+    EXCEPTIONS
+      cts_initialization_failure = 1
+      enqueue_failed             = 2
+      no_authorization           = 3
+      invalid_request            = 4
+      request_already_released   = 5
+      repeat_too_early           = 6
+      error_in_export_methods    = 7
+      object_check_error         = 8
+      docu_missing               = 9
+      db_access_error            = 10
+      action_aborted_by_user     = 11
+      export_failed              = 12
+      OTHERS                     = 13.
+   IF sy-subrc eq 0.
+         gwa_display-status = 'Released'.
+         MODIFY gt_display FROM gwa_display.
+      ENDIF.
+
+  PERFORM f_fill_log.
+  CLEAR: gwa_display.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SET_CHILDTR
+*&---------------------------------------------------------------------*
+FORM f_set_childtr .
+  LOOP AT gt_display INTO gwa_3display WHERE parenttr EQ gwa_1display-parenttr AND childtr <> ' '.
+    IF gwa_3display-checkbox EQ ' '.
+      gwa_3display-checkbox = 'X' .
+    ENDIF.
+
+  ENDLOOP.
+  lt_table->refresh( )    .
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  f_FILL_LOG
+*&---------------------------------------------------------------------*
+FORM f_fill_log .
+  CALL FUNCTION 'FORMAT_MESSAGE'
+    EXPORTING
+      id        = sy-msgid
+      lang      = 'EN'
+      no        = sy-msgno
+      v1        = sy-msgv1
+      v2        = sy-msgv2
+      v3        = sy-msgv3
+      v4        = sy-msgv4
+    IMPORTING
+      msg       = gwa_log-msg
+    EXCEPTIONS
+      not_found = 1
+      OTHERS    = 2.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ELSE.
+    gwa_display-msg = gwa_log-msg.
+    IF gwa_1display-childtr IS NOT INITIAL.
+      gwa_1display-msg = gwa_log-msg.
+      MODIFY gt_display FROM gwa_1display
+      TRANSPORTING msg WHERE childtr = gwa_1display-childtr.
+    elseIF gwa_display-childtr IS NOT INITIAL AND gwa_display-checkbox EQ 'X'.
+      MODIFY gt_display FROM gwa_display
+      TRANSPORTING msg WHERE childtr = gwa_display-childtr.
+    ELSEIF gwa_display-childtr IS INITIAL AND gwa_display-checkbox EQ 'X'.
+      MODIFY gt_display FROM gwa_display
+      TRANSPORTING msg WHERE serialno = gwa_display-serialno.
+    ENDIF.
+    CLEAR gwa_1display.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  f_RELEASE_REQUEST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_gwa_1display_CHILDTR  text
+*----------------------------------------------------------------------*
+*FORM f_release_request USING p_gwa_1display_childtr TYPE e070-trkorr.
+FORM f_release_request USING gwa_1display-childtr.
+  CALL FUNCTION 'TR_RELEASE_REQUEST'
+    EXPORTING
+      iv_trkorr                  = gwa_1display-childtr
+      iv_dialog                  = ' '
+      iv_as_background_job       = ' '
+      iv_success_message         = 'X'
+      iv_display_export_log      = 'X'
+      iv_simulation              = ' '      " Do not check
+    EXCEPTIONS
+      cts_initialization_failure = 1
+      enqueue_failed             = 2
+      no_authorization           = 3
+      invalid_request            = 4
+      request_already_released   = 5
+      repeat_too_early           = 6
+      error_in_export_methods    = 7
+      object_check_error         = 8
+      docu_missing               = 9
+      db_access_error            = 10
+      action_aborted_by_user     = 11
+      export_failed              = 12
+      OTHERS                     = 13.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_GETOWNER
+*&---------------------------------------------------------------------*
+
+FORM f_getowner .
+
+  SELECT bname
+         name_text
+    FROM v_usr_name
+    INTO TABLE gt_owner
+    WHERE bname EQ gwa_display-owner.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_CHECK_SELECT
+*&---------------------------------------------------------------------*
+
+FORM f_check_select .
+  DATA: flag TYPE i VALUE 0.
+  LOOP AT gt_display INTO gwa_display.
+    IF gwa_display-checkbox EQ 'X'.
+      flag = 1.
+    ENDIF.
+  ENDLOOP.
+  IF flag EQ 0.
+    MESSAGE text-666 TYPE 'I'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F_UPDATE_STATUS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM f_update_status .
+  LOOP AT gt_display INTO gwa_display.
+    MODIFY gt_display FROM gwa_display.
+  ENDLOOP.
+ lt_table->refresh( )    .
+ENDFORM.

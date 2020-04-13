@@ -1,0 +1,71 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZI_CLASS_IMPLEMENTATION
+*&---------------------------------------------------------------------*
+
+
+*----------------------------------------------------------------------*
+*       CLASS lcl_event_handler IMPLEMENTATION
+*----------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD on_link_click.
+*   Get the value of the checkbox and set the value accordingly
+*   Refersh the table
+    FIELD-SYMBOLS: <lfadata> LIKE LINE OF gt_display   .
+    READ TABLE gt_display ASSIGNING <lfadata> INDEX row.
+    CHECK sy-subrc IS INITIAL                          .
+    IF <lfadata>-checkbox IS INITIAL                   .
+      <lfadata>-checkbox = 'X'                         .
+    ELSEIF <lfadata>-checkbox IS NOT INITIAL           .
+       <lfadata>-checkbox = ' '                        .
+    ENDIF                                              .
+    lt_table->refresh( )                               .
+  ENDMETHOD                                            .                    "on_link_clicK
+
+ENDCLASS.                    "lcl_event_handler IMPLEMENTATION
+
+*----------------------------------------------------------------------*
+*       CLASS zcl_event_handler1 IMPLEMENTATION
+*----------------------------------------------------------------------*
+CLASS lcl_event_handler1 IMPLEMENTATION  .
+  METHOD on_user_command                 . "Whwn user press any button
+    DATA lv_ucomm TYPE sy-ucomm          .
+    lv_ucomm = sy-ucomm                  .
+    CASE lv_ucomm                        .
+      WHEN text-101                      . "Release
+        PERFORM f_check_select.
+        CALL FUNCTION 'POPUP_TO_CONFIRM'
+          EXPORTING
+           TITLEBAR                    = 'Confirm to Proceed'
+*           DIAGNOSE_OBJECT             = ' '
+            text_question               ='Do You want to Release the selected TRs'
+           TEXT_BUTTON_1               = 'Yes'
+*           ICON_BUTTON_1               = ' '
+           TEXT_BUTTON_2               = 'NO'
+*           ICON_BUTTON_2               = ' '
+           DEFAULT_BUTTON              = '1'
+           DISPLAY_CANCEL_BUTTON       = ' '
+                            .
+        IF sy-ucomm eq 'OPT1'.
+         PERFORM f_release                .
+        ELSEif sy-ucomm eq 'OPT2'.
+          BACK.
+        ENDIF.
+
+      WHEN text-102                      . "change owner
+        PERFORM f_check_select.
+        PERFORM f_change                 .
+      WHEN text-103                      . "Simulate
+        PERFORM f_check_select.
+        PERFORM f_simulate               .
+      WHEN text-104                      . "Select ALL
+        PERFORM f_sptr                   .
+      WHEN text-105                      . "Child TRs
+        PERFORM f_cptr                   .
+      WHEN text-106                      . "Uncheck All
+        PERFORM f_uncheck                .
+      WHEN OTHERS                        .
+    ENDCASE                              .
+   lt_table->refresh( )                  .
+  ENDMETHOD                              .
+ENDCLASS                                 .
