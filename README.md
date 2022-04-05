@@ -7,4 +7,4 @@ SAP ABAP tool to release and modify transport requests at once.
 
 ## Tool Input Screen
 
-![] (https://github.com/n-katiyar/Transport-Utility-Tool/blob/master/pic/ToolGUI2.png)
+![](https://github.com/n-katiyar/Transport-Utility-Tool/blob/master/pic/ToolGUI2.png)
